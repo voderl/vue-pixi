@@ -141,6 +141,7 @@ main.drawBook = () => {
     ],
   });
 };
+
 function showBook() {
   if (window.ui.current !== null) {
     main.closePanel();

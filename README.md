@@ -18,6 +18,11 @@
 - 没有引入补间动画库，也没弄一些简单的动画效果。
 - 可能有许多已知或未知的 bug
 
+## TODO
+
+- class
+- animateSprite
+
 ## Project setup
 
 ```
