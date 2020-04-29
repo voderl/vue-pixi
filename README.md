@@ -1,7 +1,5 @@
 # vue-pixi
 
-## [示例](http://voderl.cn/testtest)
-
 更改 vue 源码中的 platform 来实现渲染到 pixi canvas。  
 文件目录 platform 中即为对应 vue/src/platform 里的更改。
 
