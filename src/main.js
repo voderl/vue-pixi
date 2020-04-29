@@ -1,8 +1,11 @@
-// import Vue from '../../dist/vue.runtime.min.js';
-import Vue from './vue.runtime.min.js';
+import Vue from '../../dist/vue.runtime.js';
+// import Vue from './vue.runtime.min.js';
 import ui from './ui.vue';
 import * as $ from 'pixi.js-legacy';
+import TWEEN from '@tweenjs/tween.js';
 
+window.TWEEN = TWEEN;
+window.Vue = Vue;
 Vue.config.productionTip = false;
 window.$ = $;
 const app = new $.Application({
@@ -18,15 +21,28 @@ const width = Math.min(416, document.body.clientWidth);
 app.view.style.width = `${width}px`;
 app.view.style.height = `${width}px`;
 const { stage } = app;
+app.ticker.add((delta) => {
+  TWEEN.update();
+});
 stage.tagName = 'container';
 const main = {};
 window.main = main;
 
-window.vue = new Vue({
-  render: (h) => h(ui),
-}).$mount();
-stage.addChild(window.vue.$el);
-
+const textures = Vue.pixiConfig.textures;
+const loader = new $.Loader();
+loader.add('./hero.png', (resource) => {
+  const { texture } = resource;
+  if (texture) {
+    textures.hero = $.Texture.splitTexture(texture, ['down', 'left', 'right', 'up'], 4);
+  }
+});
+loader.load(() => {
+  loader.destroy();
+  const vue = new Vue({
+    render: (h) => h(ui),
+  }).$mount();
+  stage.addChild(vue.$el);
+});
 main.closePanel = () => {
   window.ui.show(null);
 };
@@ -153,4 +169,10 @@ button.addEventListener('mousedown', function() {
   showBook();
 });
 document.body.appendChild(button);
-main.drawBook();
+
+// main.drawBook();
+function dfsSetInteractive(vnode) {
+  const node = {
+    interactive: vnode.interactive || false,
+  };
+}

@@ -68,6 +68,7 @@ function updateDOMListeners(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   }
   const on = vnode.data.on || {};
   const oldOn = oldVnode.data.on || {};
+  console.log(on, oldOn);
   target = vnode.elm;
   // normalizeEvents(on);
   updateListeners(on, oldOn, add, remove, createOnceHandler, vnode.context);

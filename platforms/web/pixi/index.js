@@ -5,6 +5,7 @@ import config from "core/config";
 import { extend, noop } from "shared/util";
 import { mountComponent } from "core/instance/lifecycle";
 import { devtools, inBrowser } from "core/util/index";
+import { pixiConfig } from "./config/handleConfig";
 
 import {
   query,
@@ -25,7 +26,7 @@ Vue.config.isReservedTag = isReservedTag;
 Vue.config.isReservedAttr = isReservedAttr;
 Vue.config.getTagNamespace = getTagNamespace;
 Vue.config.isUnknownElement = isUnknownElement;
-
+Vue.pixiConfig = pixiConfig;
 // install platform runtime directives & components
 // extend(Vue.options.directives, platformDirectives)
 // extend(Vue.options.components, platformComponents)

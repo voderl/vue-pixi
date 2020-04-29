@@ -1,4 +1,4 @@
-import { renderList, attrList } from "vueConfig";
+import { renderList } from "./config/handleConfig";
 import { DisplayObject } from "pixi.js-legacy";
 
 const list = renderList;
@@ -6,28 +6,35 @@ const list = renderList;
  * 在一个node被加入时，加入是从底到高被加入时。一般尽可能将
  * @param {DisplayObject} node
  */
-function added(parent, node) {
-  return;
-}
+// const getValueVnode = (vnode) => {
+//   if (!vnode.children || vnode.children.length !== 1) return null;
+//   const node = vnode.children[0];
+//   if (node.tag !== undefined || !node.text) return null;
+//   return node;
+// };
+
 const getValue = (vnode) => {
   if (!vnode.children || vnode.children.length !== 1) return null;
   const node = vnode.children[0];
   if (node.tag !== undefined || !node.text) return null;
-  return node.text;
+  return node.text.trim();
 };
-
-const updateValue = (textNode) => {
-  const node = textNode.parent;
-  if (!node) return;
-  const data = attrList.get(node.tagName);
-  if (typeof data.$value === "function") {
-    data.$value(node, textNode.text);
-  }
-};
+// const updateValue = (textNode, parent) => {
+//   if (parent) {
+//     textNode.parent = parent;
+//     parent.valueNode = textNode;
+//   }
+//   const node = textNode.parent;
+//   if (!node) return;
+//   if (typeof valueList[node.tagName] === "function") {
+//     valueList[node.tagName](node, textNode.text, textNode.oldText);
+//   }
+// };
 
 export function createElement(tagName, vnode) {
   if (!list[tagName]) throw new Error(`无${tagName}节点`);
-  const node = list[tagName](vnode, getValue(vnode));
+  const value = getValue(vnode);
+  const node = list[tagName](value, vnode);
   node.tagName = tagName;
   return node;
 }
@@ -37,11 +44,13 @@ export function createElementNS() {
 }
 
 export function createTextNode(text) {
-  return {
-    isTextNode: true,
-    parent: null,
-    text: text,
-  };
+  // return {
+  //   isTextNode: true,
+  //   parent: null,
+  //   text: text,
+  //   oldText: "",
+  // };
+  return null;
 }
 
 export function createComment(text) {
@@ -55,32 +64,32 @@ export function insertBefore(parentNode, newNode, referenceNode) {
   // parentNode.insertBefore(newNode, referenceNode);
   const index = parentNode.getChildIndex(referenceNode);
   if (index === -1) throw new Error("插入时找不到");
-  if (!newNode.isTextNode) parentNode.addChildAt(newNode, index);
-  else {
-    newNode.parent = parentNode;
-    updateValue(newNode);
-  }
-  added(parentNode, newNode);
+  // if (!newNode.isTextNode) parentNode.addChildAt(newNode, index);
+  // else {
+  //   updateValue(newNode, parentNode);
+  // }
+  if (newNode !== null) parentNode.addChildAt(newNode, index);
 }
 
 export function removeChild(node, child) {
   // node.removeChild(child);
   // child 是否destroy？
-  node.removeChild(child);
+  if (child !== null) node.removeChild(child);
 }
 
 export function appendChild(node, child) {
   // node.appendChild(child);
-  if (!child.isTextNode) node.addChild(child);
-  else {
-    child.parent = node;
-    updateValue(child);
-  }
-  added(node, child);
+  // if (!child.isTextNode) node.addChild(child);
+  // else {
+  //   child.parent = node;
+  //   updateValue(child);
+  // }
+  if (child !== null) node.addChild(child);
 }
 
 export function parentNode(node) {
   // return node.parentNode;
+  if (node === null) return null;
   return node.parent;
 }
 
@@ -98,10 +107,12 @@ export function tagName(node) {
 }
 
 export function setTextContent(node, text) {
-  node.text = text;
-  updateValue(node);
+  // return;
+  // node.oldText = node.text;
+  // node.text = text;
+  // updateValue(node);
 }
 
 export function setStyleScope(node, scopeId) {
-  node.setAttribute(scopeId, "");
+  throw new Error("不支持Scope Style");
 }

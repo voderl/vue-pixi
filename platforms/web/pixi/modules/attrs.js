@@ -2,8 +2,6 @@
 
 import { extend, isDef, isUndef } from "shared/util";
 
-import { attrList } from "vueConfig";
-
 function updateAttrs(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const opts = vnode.componentOptions;
   if (isDef(opts) && opts.Ctor.options.inheritAttrs === false) {
@@ -122,6 +120,9 @@ function removeAttr(data, el, key) {
 // }
 
 export default {
-  create: updateAttrs,
+  create: (...args) => {
+    console.log("create", ...args);
+    updateAttrs(...args);
+  },
   update: updateAttrs,
 };

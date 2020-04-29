@@ -139,7 +139,7 @@ const colorsByName = {
   white: '#ffffff',
   whitesmoke: '#f5f5f5',
   yellow: '#ffff00',
-  yellowgreen: '#9acd32'
+  yellowgreen: '#9acd32',
 };
 function _hslToRgb(hsl) {
   if (typeof hsl == 'string') {
@@ -178,6 +178,24 @@ function _hslToRgb(hsl) {
   return rgb;
 }
 const utils = {
+  noticeWhenSetValue(obj, prop, func) {
+    if (typeof func !== 'function') return console.log('func需为function类型');
+    Object.defineProperty(obj, prop, {
+      configurable: true,
+      get() {
+        return 'waiting';
+      },
+      set(v) {
+        Object.defineProperty(this, prop, {
+          value: v,
+          writable: true,
+        });
+        func(prop, v);
+        return v;
+      },
+    });
+    return obj;
+  },
   /**
    * deep assign data 到 obj
    * @param {object} obj
@@ -255,7 +273,7 @@ const utils = {
           parseInt(str.charAt(1), 16) * 0x11,
           parseInt(str.charAt(2), 16) * 0x11,
           parseInt(str.charAt(3), 16) * 0x11,
-          1
+          1,
         ];
       }
       const r = parseInt(str.slice(1, 3), 16);
@@ -282,6 +300,6 @@ const utils = {
       return [name.slice(0, index), name.slice(index + 1)];
     }
     return [name];
-  }
+  },
 };
 export default utils;
