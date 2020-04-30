@@ -1,5 +1,6 @@
 <template>
   <tiling :x="0" :width="416" :height="416" @pointerdown="sayHello" src="./ground.png">
+    <graphics></graphics>
     <zone
       :x="100"
       :style="{
@@ -18,9 +19,16 @@
         >{{ data + '' }}</text
       >
       <text>{{ data + 'cool' }}</text>
-      <sprite :x="50" :y="50" :scale="0.5" :time="1000" src="./logo.png"></sprite>
+      <sprite
+        :x="50"
+        :y="50"
+        :scale="0.5"
+        :time="1000"
+        src="./logo.png"
+        @pointerdown="sayHello"
+      ></sprite>
     </zone>
-    <hero :x="50" :y="50" :scale="2">hero</hero>
+    <hero :x="50" :y="50" ref="hero">hero</hero>
   </tiling>
 </template>
 <script>
@@ -43,8 +51,13 @@ export default {
     console.log(arguments, this);
   },
   methods: {
-    sayHello() {
+    sayHello(e) {
       console.log('hello');
+    },
+    setHero(e) {
+      console.log(e);
+      const { x, y } = e.data.global;
+      this.$refs.hero.$el.position.set(x, y);
     },
     sayEvent(e) {
       console.log(e);
