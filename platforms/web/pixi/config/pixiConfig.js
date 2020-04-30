@@ -118,6 +118,7 @@ Texture.splitTexture = function (texture, row, col) {
       if (currentFrame < this.textures.length) this.currentTime = currentFrame;
     }
   });
+
 const pixiConfig = {
   animationTime: 500,
   textures: {},

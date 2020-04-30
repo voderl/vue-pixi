@@ -12,6 +12,8 @@ import {
   Texture,
   AnimatedSprite,
   TilingSprite,
+  TextStyle,
+  ParticleContainer,
 } from "pixi.js-legacy";
 import utils from "./utils";
 import pixiConfig from "./pixiConfig";
@@ -55,7 +57,7 @@ const defaultUpdate = {
       el.y = value;
       el.$y = value;
     },
-    zIndex(el, value, oldValue) {
+    zIndex(el, value = 0, oldValue) {
       if (value !== 0) {
         if (el.parent === null) {
           el.once("added", () => (el.parent.sortableChildren = true));
@@ -65,39 +67,41 @@ const defaultUpdate = {
       }
     },
     width(el, value) {
-      el.width = value;
+      if (value === undefined) el.scale.x = 1;
+      else el.width = value;
     },
     height(el, value) {
+      if (value === undefined) el.scale.y = 1;
       el.height = value;
     },
-    tint(el, value) {
+    tint(el, value = 0x0) {
       el.tint = utils.getColor(value);
       console.log(el.tint);
     },
-    data(el, value) {
+    data(el, value = {}) {
       utils.deepAssign(el, value);
     },
     anchor: {
-      x(el, value) {
+      x(el, value = 0) {
         el.anchor.x = value;
       },
-      y(el, value) {
+      y(el, value = 0) {
         el.anchor.y = value;
       },
-      $update(el, value) {
+      $update(el, value = 0) {
         if (typeof value === "object") {
           el.anchor.set(value.x, value.y);
         } else el.anchor.set(value, value);
       },
     },
     scale: {
-      x(el, value) {
+      x(el, value = 1) {
         el.scale.x = value;
       },
-      y(el, value) {
+      y(el, value = 1) {
         el.scale.y = value;
       },
-      $update(el, value) {
+      $update(el, value = 1) {
         if (typeof value === "object") {
           el.scale.set(value.x, value.y);
         } else el.scale.set(value, value);
@@ -165,6 +169,7 @@ const getTexture = (value, el, options) => {
   }
   return Texture.Loading;
 };
+const defaultTextStyle = new TextStyle();
 const list = {
   container: {
     render() {
@@ -214,10 +219,13 @@ const list = {
           if (!el.frames) throw new Error("不存在frames不应该指定status");
           el.change(newValue);
         },
-        time(el, value, oldValue) {
+        time(el, value = pixiConfig.animationTime, oldValue) {
           el.animationSpeed = 1000 / 60 / parseInt(value);
         },
-        animationSpeed(el, value) {
+        animationSpeed(
+          el,
+          value = 1000 / 60 / parseInt(pixiConfig.animationTime)
+        ) {
           el.animationSpeed = value;
         },
       },
@@ -258,10 +266,26 @@ const list = {
         },
       },
       style: {
-        $proxy(el, key, value) {
+        $proxy(el, key, value = defaultTextStyle[key]) {
           el.style[key] = value;
         },
       },
+    },
+  },
+  particle: {
+    render() {
+      return new ParticleContainer(undefined, {
+        scale: true,
+        position: true,
+        rotation: true,
+        uvs: true,
+        alpha: true,
+      });
+    },
+  },
+  graphics: {
+    render() {
+      return new Graphics();
     },
   },
   zone: {

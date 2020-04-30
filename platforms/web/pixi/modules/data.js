@@ -1,6 +1,7 @@
 import { diffList } from "../config/handleConfig";
 import { createElement } from "../pixi-node";
 import updateListeners from "../event/listener";
+import keyEvent from "../event/keyEvent";
 
 const emetyFunction = () => {};
 /**
@@ -129,7 +130,6 @@ const updateNode = function (oldVnode, newVnode) {
   }
   const value = getValue(newVnode);
   if (value) newVnode.data.value = value;
-  const el = newVnode.elm;
   const diffObj = diffList[newVnode.tag] || diffList[newVnode.elm.tagName];
   if (typeof diffObj !== "object") {
     throw new Error(
@@ -145,10 +145,11 @@ const updateNode = function (oldVnode, newVnode) {
     reRender: false,
     update,
   };
-  options.update(el);
+  options.update();
+  // controller.list.push(options);
 };
 // update 来更新 ，包括判断是否需要reRender， 以及可以diff，自动推断diffObj
-function update(el, newData, oldData) {
+function update(el = this.vnode.elm, newData, oldData) {
   const options =
     newData === undefined
       ? this
@@ -185,6 +186,10 @@ function update(el, newData, oldData) {
 
 function reRender(vnode, options) {
   console.log("reRender", vnode, options);
+  if (options.count === undefined) options.count = 0;
+  options.count += 1;
+  if (options.count > 10)
+    throw new Error("reRender了超过10次，可能陷入死循环，请检查");
   const oldNode = vnode.elm;
   const node = createElement(vnode.tag, vnode);
   const removed = oldNode.removeChildren();
@@ -207,8 +212,17 @@ export default {
   create: updateNode,
   update: updateNode,
   destroy(vnode) {
-    if (vnode.elm && !vnode.elm._destroyed) {
-      vnode.elm.destroy();
+    const { elm } = vnode;
+    if (elm && !elm._destroyed) {
+      if (elm._eventsCount) {
+        ["keydown", "keyup"].forEach((key) => {
+          if (elm._events[key]) {
+            const index = keyEvent[key].indexOf(elm);
+            if (index > -1) keyEvent[key].splice(index, 1);
+          }
+        });
+      }
+      elm.destroy();
     }
     vnode.elm = null;
   },

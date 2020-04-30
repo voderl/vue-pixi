@@ -12,28 +12,6 @@ function keyupListener(e) {
 //   e.stopPropagation();
 //   keyEvent.do("keypress", e);
 // }
-function filter(arr, func) {
-  let keep = false;
-  let start = 0;
-  let deleteCount = 0;
-  const len = arr.length;
-  for (let i = 0; i < len - deleteCount; i++) {
-    if (func(arr[i], deleteCount + i)) {
-      if (keep) {
-        keep = !keep;
-        arr.splice(start, i - start);
-        deleteCount += i - start;
-        i = start;
-      }
-    } else if (!keep) {
-      start = i;
-      keep = !keep;
-    }
-  }
-  if (keep) {
-    arr.splice(start, arr.length - start);
-  }
-}
 const keyEvent = {
   active: true,
   keydown: [],
@@ -66,10 +44,9 @@ const keyEvent = {
     el.off(type, handler);
   },
   do(type, e) {
-    filter(this[type], (el) => {
-      if (!el || el._destroyed) return false;
+    this[type].forEach((el) => {
+      if (!el || el._destroyed) return;
       el.emit(type, e, this.getKey(e.code));
-      return true;
     });
   },
   enable() {

@@ -41,6 +41,7 @@ loader.load(() => {
   const vue = new Vue({
     render: (h) => h(ui),
   }).$mount();
+  window.vue = vue;
   stage.addChild(vue.$el);
 });
 main.closePanel = () => {
@@ -168,6 +169,8 @@ button.innerText = '点击切换';
 button.addEventListener('mousedown', function() {
   showBook();
 });
+button.style.width = '100px';
+button.style.height = '100px';
 document.body.appendChild(button);
 
 // main.drawBook();
