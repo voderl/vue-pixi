@@ -122,6 +122,10 @@ Texture.splitTexture = function (texture, row, col) {
 const pixiConfig = {
   animationTime: 500,
   textures: {},
+  /**
+   * 在textures中寻找不到时以src加载 ？
+   */
+  autoload: true,
 };
 
 export default pixiConfig;
