@@ -1,8 +1,8 @@
 // import Vue from '../../dist/vue.runtime.js';
-import Vue from './vue.runtime.min.js';
-import ui from './ui.vue';
 import * as $ from 'pixi.js-legacy';
 import TWEEN from '@tweenjs/tween.js';
+import Vue from './vue.runtime.js';
+import ui from './ui.vue';
 
 window.TWEEN = TWEEN;
 window.Vue = Vue;
@@ -28,7 +28,7 @@ stage.tagName = 'container';
 const main = {};
 window.main = main;
 
-const textures = Vue.pixiConfig.textures;
+const { textures } = Vue.pixiConfig;
 const loader = new $.Loader();
 loader.add('./hero.png', (resource) => {
   const { texture } = resource;
@@ -166,7 +166,7 @@ function showBook() {
 }
 const button = document.createElement('button');
 button.innerText = '点击切换';
-button.addEventListener('mousedown', function() {
+button.addEventListener('mousedown', () => {
   showBook();
 });
 button.style.width = '100px';
@@ -174,8 +174,3 @@ button.style.height = '100px';
 document.body.appendChild(button);
 
 // main.drawBook();
-function dfsSetInteractive(vnode) {
-  const node = {
-    interactive: vnode.interactive || false,
-  };
-}

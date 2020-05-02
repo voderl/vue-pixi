@@ -1,17 +1,17 @@
 <template>
-    <container>
-      <sprite>./logo.png</sprite>
-      <component :is='current' :data='data'></component>
-    </container>
+  <container>
+    <component :is="current" :data="data"></component>
+  </container>
 </template>
 <script>
 import book from './book.vue';
 import test from './test.vue';
+
 export default {
   name: 'ui',
   data() {
     return {
-      current: 'test'
+      current: 'test',
     };
   },
   components: {
@@ -27,6 +27,6 @@ export default {
       this.data = data || {};
       this.current = id;
     },
-  }
+  },
 };
 </script>

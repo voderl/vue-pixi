@@ -10,6 +10,7 @@
 </template>
 <script>
 import TWEEN from '@tweenjs/tween.js';
+
 const scan = {
   up: { x: 0, y: -1 },
   left: { x: -1, y: 0 },
@@ -60,7 +61,7 @@ export default {
         return;
       }
       const { x, y } = scan[direction];
-      const $el = this.$el;
+      const { $el } = this;
       if ($el.frames) {
         if ($el.status !== direction) {
           $el.change(direction);

@@ -19,20 +19,14 @@
         >{{ data + '' }}</text
       >
       <text>{{ data + 'cool' }}</text>
-      <sprite
-        :x="50"
-        :y="50"
-        :scale="0.5"
-        :time="1000"
-        src="./logo.png"
-        @pointerdown="sayHello"
-      ></sprite>
+      <sprite :x="50" :y="50" :scale="0.5" src="./logo.png" @pointerdown="sayHello"></sprite>
     </zone>
     <hero :x="50" :y="50" ref="hero">hero</hero>
   </tiling>
 </template>
 <script>
 import hero from './hero.vue';
+
 export default {
   name: 'test',
   components: {
