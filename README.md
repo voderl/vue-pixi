@@ -14,7 +14,7 @@
 + this.data = data || {};
 ```
 
-更改了`vue/src/core/vdom/patch.js` 见 `./core/vdom/patch.js` 搜索 `//change`
+更改了`vue/src/core/vdom/patch.js` 见 `./core/vdom/patch.js` 搜索 `// change`
 
 > 增加了一个 controller，用于控制 diff 过程中节点的生成。因为节点的生成和最初的一次渲染极其耗时，每一帧如果耗时过长则过渡到下一帧生成。
 >
@@ -83,8 +83,9 @@ function split(texture, dx, dy, dw, dh)
 `Vue.pixiConfig`: {
 
 - `animationTime`：`AnimatedSprite`的默认每帧时长，默认为 500ms
-- `textures`: `<sprite>value</sprite>`填写 value 或 src 时所寻找的命名空间，如果未找到则按照`src`来加载。
-- `keyEvent`: 为了完成 keydown、keyup 事件的实现。在 window 上监听了 keydown 和 keyup。使用 keyEvent.disable 来删除监听的事件。  
+- `textures`: `<sprite>value</sprite>`填写 value 或 src 时所寻找的命名空间。如果根据 value 未找到图片则直接返回`Texture.Loading`，并在`textures`里面设置 setter 和 getter，getter 返回`'waiting'`, setter 当设置时自动更新目前为 Loading 的图案。
+- `autoload`: 默认为`true`, 未找到 value 时是否以 value 为 src 加载
+- `keyEvent`: 为了完成 keydown、keyup 事件的实现。在 window 上监听了 keydown 和 keyup。使用 `keyEvent.disable()` 来删除监听的事件。  
   }
 
 ## 基本类型
@@ -115,19 +116,24 @@ function split(texture, dx, dy, dw, dh)
 - 没有引入补间动画库，也没弄一些简单的动画效果，如 show，hide 选项，传递数值或函数表明渐入和渐出效果。
 - 可能有许多已知或未知的 bug
 
-## 更改中
+## 更改
 
-- interactiveChildren 的设置，默认 pixi 节点的 interactiveChildren 为 true。
-  > 当有事件触发时，沿着 interactiveChildren 为 true 的路线遍历 pixi 节点树来寻找 interactive 为 true 的节点触发事件，因此将子代没有 interactive 的节点的 interactiveChildren 置为 false 可以提高性能。 但是涉及到 interactive 节点的消失和增加，在此先行搁置。
-- Graphics 的处理，一些操作可以放到下一帧进行，避免一帧执行太多，造成卡顿
-- AnimatedSprite 默认直接播放，可以考虑增加个参数让其默认停止
 - [x] 一些属性在删除时没有设置默认值，以值为 undefined 来更新，造成一些错误
 - [x] diffandpatch 设定一个任务序列，处理超时自动下一帧处理.(diffAndPatch 本身就占用较少，82 个节点最多 3、4ms 的样子，直接处理了生成函数，效果显著)；
+- [x] 改 value 获取方式： 传入 getValue 函数,默认优先级`<sprite src='value2'>value</sprite>`，value 大于 value2
+- [x] 更新 controller，controller 在 createChildren 时挟持掉 createElm，但是 createElm 也是创建子组件的方法，会导致子组件在创建时不能正常触发 hook(如 mounted 等方法)，因此将创建子组件和创建子元素分离开来，确保组件都是直接创造执行，子元素进入 controller。(此处可能有 bug)
 
 ## TODO
 
-改 value 获取方式： 传入 getValue 函数
-提供\$fresh 方法，在下一帧执行方法
+- 性能方面，pixi 的初次渲染时间太长了，3~4ms 里创建的元素需要渲染 5-6ms
+- AnimatedSprite 默认直接播放，可以考虑增加个参数让其默认停止
+- 提供\$fresh 方法，在下一帧执行方法
+- interactiveChildren 的设置，默认 pixi 节点的 interactiveChildren 为 true。
+  > 当有事件触发时，沿着 interactiveChildren 为 true 的路线遍历 pixi 节点树来寻找 interactive 为 true 的节点触发事件，因此将子代没有 interactive 的节点的 interactiveChildren 置为 false 可以提高性能。 但是涉及到 interactive 节点的消失和增加，在此先行搁置。
+- 还有考虑将 userConfig 不打包，作为外部依赖。 或者提供增加新类型的方法，完善具体写法 api
+- 增加 controller 配置到 pixiConfig，自行配置 是否使用 controller、controller 每帧最高执行时间
+- 增加默认组件，如 hero 组件，hero 组件可指定是否 control 操作。
+- 可以考虑增加单个组件，组件内容可自行创造，就像 vue 创建 canvas 元素一样，内部的操作自行实现。
 
 ## Project setup
 

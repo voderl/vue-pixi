@@ -29,5 +29,6 @@ module.exports = {
     'max-classes-per-file': ['error', 2],
     'prefer-arrow-callback': 1,
     'func-names': ['warn', 'as-needed'],
+    'import/extensions': 1,
   },
 };
