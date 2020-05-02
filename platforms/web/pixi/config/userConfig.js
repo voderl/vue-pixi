@@ -76,7 +76,6 @@ const defaultUpdate = {
     },
     tint(el, value = 0x0) {
       el.tint = utils.getColor(value);
-      console.log(el.tint);
     },
     data(el, value = {}) {
       utils.deepAssign(el, value);
@@ -115,8 +114,8 @@ const defaultUpdate = {
   },
 };
 const waitToset = {};
-// 成功获取
-const notice = (key, value) => {
+// 当set时
+const notice = (value, key) => {
   if (waitToset[key]) {
     waitToset[key].forEach((data) => {
       data.options.update(data.el, { value: key }, {});
@@ -145,8 +144,9 @@ const getTexture = (value, el, options) => {
         options,
       },
     ];
+    utils.noticeWhenSetValue(textures, value, notice);
+    if (!pixiConfig.autoload) return Texture.Loading;
     const loader = new Loader();
-    textures[value] = "waiting";
     loader.add(value, (resource) => {
       const { texture } = resource;
       /** vue调试中输入错误路径能成功获取，但获取到的是根目录网页内容，在此判别 */
@@ -156,14 +156,15 @@ const getTexture = (value, el, options) => {
           resource.data
         );
         textures[value] = Texture.Error;
-      } else textures[value] = texture;
+      } else if (!resource.error) {
+        textures[value] = texture;
+      }
     });
     loader.onError.add((err) => {
       textures[value] = Texture.Error;
       console.error("加载错误", err);
     });
     loader.load(() => {
-      notice(value);
       loader.destroy();
     });
   }
@@ -191,6 +192,10 @@ const list = {
       node.animationSpeed = 1000 / 60 / pixiConfig.animationTime;
       return node;
     },
+    getValue(data) {
+      if (data.attrs && data.attrs.src) return data.attrs.src;
+      else return null;
+    },
     update: {
       value(el, newValue, oldValue, options) {
         const texture = getTexture(newValue, el, options);
@@ -212,9 +217,6 @@ const list = {
         options.reRender = true;
       },
       attrs: {
-        src(el, newValue, oldValue, options) {
-          options.diffObj.value.$update(el, newValue, oldValue, options);
-        },
         status(el, newValue, oldValue) {
           if (!el.frames) throw new Error("不存在frames不应该指定status");
           el.change(newValue);
@@ -238,6 +240,10 @@ const list = {
         throw new Error(`[${value}]tilingSprite的texture不能为数组`);
       return new TilingSprite(texture);
     },
+    getValue(data) {
+      if (data.attrs && data.attrs.src) return data.attrs.src;
+      else return null;
+    },
     update: {
       value(el, value, oldValue, options) {
         const texture = getTexture(value, el, options);
@@ -256,14 +262,13 @@ const list = {
     render(value) {
       return new Text(value);
     },
+    getValue(data) {
+      if (data.attrs && data.attrs.text) return data.attrs.text;
+      else return null;
+    },
     update: {
       value(el, value, oldValue, options) {
         el.text = value;
-      },
-      attrs: {
-        text(el, value) {
-          el.text = value;
-        },
       },
       style: {
         $proxy(el, key, value = defaultTextStyle[key]) {
