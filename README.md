@@ -24,7 +24,7 @@
 >   </p>
 > - 坏处 ： 如果有大量节点变动可能会造成闪动(或许可以考虑删除时也控制一下，但是删除不会卡顿(×
 
-构建的 vue 文件路径为 vue.runtime.min.js
+构建的 vue 文件路径为 vue.js
 该文件需要`pixi.js-legacy`依赖，或者暴露`PIXI`全局变量。
 
 ## DEMO
@@ -92,7 +92,7 @@ function split(texture, dx, dy, dw, dh)
 
 - container 容器 => Container
 - text
-- sprite - 传递 src，在`pixiConfig.textures`里面寻找
+- sprite - 传递 src，在`pixiConfig.textures`命名空间里面寻找
   - Sprite 当`texture` 为 `Texture`类型时
   - AnimatedSprite 当`texture`为 `[]Texture`时，或者当`texture` 为如下格式时：(自动播放)
     ```js
@@ -108,6 +108,142 @@ function split(texture, dx, dy, dw, dh)
 - tiling - 和 sprite 类似，但是传入 width 和 height 将重复图片来覆盖。
 - graphics - Graphics ,具体使用见 pixi API
 - particle - ParticleContainer ,一般不使用，可能需要使用粒子效果的组件需要
+
+### 基础属性
+
+- `x` x 坐标位置
+- `y` y 坐标位置
+- `zIndex` 优先级, 默认按照先低后高的优先级绘制，请尽量不要使用此属性
+- `width` 将宽度拉伸到 width
+- `height` 将高度拉伸到 height
+- `data` 传入一个对象，将此对象 deepAssign 到 pixi 节点本身( 相当于直接改 pixi 节点的属性)
+- `tint` 传入一个颜色，将改变色相，不支持透明度，首要考虑请考虑 0xffffff 16 进制数字类型，其他类型也支持。
+- `anchor` 传入一个`{ x: 0-1, y: 0-1 }`的对象，如果传入一个数字 则将 x，y 都设置为此数字。
+- `scale` 拉伸，写法同上。不过设置 width 和 height 影响 scale，更改 scale 也会影响 width、height
+- `fit` 使该节点自适应大小。
+  ```jsx
+    <text :fit='{zone: [x, y, width, height], ratio: [minRatio, maxRatio], type: "center" }'></text>
+    type 为 center, left, top, right, bottom 中的一个，默认为center，
+    minRatio 和 maxRatio 是自适应大小放缩的最小比例和最大比例，如果ratio传入数字则锁定放缩比例
+    <text :x="100" :y="100" :fit='[width, height]'> 为简略写法，
+  ```
+
+### container
+
+基本容器，性能消耗较小
+
+### sprite
+
+```jsx
+<sprite :src='value2'>value1</sprite>
+```
+
+value1 的优先级大于 value2，当没有 value1 时按照 value2 处理。
+以 value 为 key 在`Vue.pixiConfig.textures`命名空间中查找
+
+- 如果找到了
+  - 找到的是 Texture，生成 Sprite
+  - 找到的是[]Texture, 生成 AnimatedSprite， 默认每帧播放时间为 `Vue.pixiConfig.animationTime`
+  - 找到的是一个对象, 如下
+  ```javascript
+  {
+      down: []Texture,
+      up: []Texture,
+      left: []Texture,
+      right: []Texture
+  }
+  ```
+  则以`Object.values[0]`来生成 AnimatedSprite，可以使用`change`方法来更换`status`，或者直接传入`status`参数
+- 如果没找到
+  - 当`Vue.pixiConfig.autoload`为 true 时(默认为 true)，以 src 加载该资源
+  - 在`Vue.pixiConfig.textures`中以该 value 设置一个 get、set，get 返回`'waiting'`，当 set 时，自动更新当前使用这个尚未存在的 texture 的节点。
+- 默认情况下未找到返回`Texture.Loading`
+
+### tiling
+
+同 sprite 基本一致，不过只支持`Sprite`类型
+其 width 和 height 设置 将以该 sprite 重复覆盖至 width 和 height
+
+### text
+
+支持 style 属性，style 属性列表请看 http://pixijs.download/release/docs/PIXI.TextStyle.html
+
+### zone
+
+```jsx
+<zone
+    :width=100
+    :height=100
+    :radius=0.2   [0~0.5]的一个值
+    :fillColor='red'
+    :fillAlpha=1  [0~1]
+    :lineWidth=3	strokeLine的宽度
+    :lineColor='blue'
+    :lineAlpha=1  [0~1]
+    :alignment=1	strokeLine相对zone的位置，如果为0.5线宽一半在里面，一半在外面
+    				为1表明全部在外面
+    >
+</zone>
+```
+
+zone 创建时消耗资源较大，合理使用
+
+### graphics
+
+创建画笔什么的绘制图案。
+使用 ref 来获取到该元素对应的 pixi 节点，然后使用 pixi 节点的方法绘制。
+http://pixijs.download/release/docs/PIXI.Graphics.html
+
+### particleContainer
+
+pixijs 的另一种高性能的 Container，不过一个 Container 只支持一种 Texture，一些高级属性什么的也不支持
+主要用于粒子特效，当然，在这里它还没什么用
+
+## 事件
+
+### 键盘事件
+
+`Vue.pixiConfig.keyEvent`
+
+```js
+function keydownListener(e) {
+  e.stopPropagation();
+  keyEvent.do('keydown', e);
+}
+function keyupListener(e) {
+  e.stopPropagation();
+  keyEvent.do('keyup', e);
+}
+```
+
+事件监听类似如上，如果取消默认的 window 监听的事件，则调用 `keyEvent.disable();`
+目前仅支持 keydown 和 keypress
+
+```js
+function(event, code) {
+
+}
+```
+
+传入的第二个参数为 code，具体见https://developer.mozilla.org/zh-CN/docs/Web/API/KeyboardEvent/code
+同时请尽量采用第二个参数 code，而不是第一个参数 event.code，因为`keyEvent`里面有一个 mapping
+
+### 鼠标事件
+
+http://pixijs.download/release/docs/PIXI.Sprite.html#event:click
+左侧 events 栏
+
+pointer 是兼容 mouse 和 touch 的
+
+- ​ pointerdown 按下
+
+- ​ pointerup 松起
+
+- pointermove 移动
+
+- pointertap 点击
+
+- pointerout 移出该元素
 
 ## 问题
 
