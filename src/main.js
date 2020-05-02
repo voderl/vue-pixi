@@ -1,5 +1,5 @@
-import Vue from '../../dist/vue.runtime.js';
-// import Vue from './vue.runtime.min.js';
+// import Vue from '../../dist/vue.runtime.js';
+import Vue from './vue.runtime.min.js';
 import ui from './ui.vue';
 import * as $ from 'pixi.js-legacy';
 import TWEEN from '@tweenjs/tween.js';

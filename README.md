@@ -124,6 +124,11 @@ function split(texture, dx, dy, dw, dh)
 - [x] 一些属性在删除时没有设置默认值，以值为 undefined 来更新，造成一些错误
 - [x] diffandpatch 设定一个任务序列，处理超时自动下一帧处理.(diffAndPatch 本身就占用较少，82 个节点最多 3、4ms 的样子，直接处理了生成函数，效果显著)；
 
+## TODO
+
+改 value 获取方式： 传入 getValue 函数
+提供\$fresh 方法，在下一帧执行方法
+
 ## Project setup
 
 ```
