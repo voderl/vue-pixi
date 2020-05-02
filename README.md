@@ -183,7 +183,7 @@ function keyupListener(e) {
 ```
 
 事件监听类似如上，如果取消默认的 window 监听的事件，则调用 `keyEvent.disable();`
-目前仅支持 keydown 和 keypress
+目前仅支持 keydown 和 keyup
 
 ```js
 function(event, code) {
@@ -192,7 +192,7 @@ function(event, code) {
 ```
 
 传入的第二个参数为 code，具体见https://developer.mozilla.org/zh-CN/docs/Web/API/KeyboardEvent/code
-同时请尽量采用第二个参数 code，而不是第一个参数 event.code，因为`keyEvent`里面有一个 mapping
+同时请尽量采用第二个参数 code，而不是第一个参数 event.code，因为`keyEvent`里面有一个 mapping， code 是已经经过 mapping 的结果
 
 ### 鼠标事件
 
