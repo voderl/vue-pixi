@@ -6,7 +6,7 @@ import pixiConfig from "./pixiConfig.js";
 
 const diffList = {};
 const renderList = {};
-
+const valueList = {};
 /**
  * 处理 event 的update
  */
@@ -28,6 +28,9 @@ Object.keys(list).forEach((key) => {
     throw new Error(`list中${key}的render填写错误`);
   }
   renderList[key] = data.render;
-});
 
+  if (typeof data.getValue === "function") {
+    valueList[key] = data.getValue;
+  }
+});
 export { diffList, renderList, valueList, pixiConfig };

@@ -1,4 +1,4 @@
-import { diffList } from "../config/handleConfig";
+import { diffList, valueList } from "../config/handleConfig";
 import { createElement } from "../pixi-node";
 import updateListeners from "../event/listener";
 import keyEvent from "../event/keyEvent";
@@ -117,10 +117,12 @@ const formatData = (data) => {
   return result;
 };
 const getValue = (vnode) => {
-  if (!vnode.children || vnode.children.length !== 1) return null;
-  const node = vnode.children[0];
-  if (node.tag !== undefined || !node.text) return null;
-  return node.text.trim();
+  if (vnode.children && vnode.children.length === 1) {
+    const node = vnode.children[0];
+    if (node.tag === undefined && node.text) return node.text.trim();
+  }
+  if (valueList[vnode.tag]) return valueList[vnode.tag](vnode.data);
+  return null;
 };
 
 const updateNode = function (oldVnode, newVnode) {
@@ -129,7 +131,9 @@ const updateNode = function (oldVnode, newVnode) {
     return;
   }
   const value = getValue(newVnode);
-  if (value) newVnode.data.value = value;
+  if (value) {
+    newVnode.data.value = value;
+  }
   const diffObj = diffList[newVnode.tag] || diffList[newVnode.elm.tagName];
   if (typeof diffObj !== "object") {
     throw new Error(

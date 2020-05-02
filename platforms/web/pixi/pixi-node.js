@@ -1,4 +1,4 @@
-import { renderList } from "./config/handleConfig";
+import { renderList, valueList } from "./config/handleConfig";
 import { DisplayObject } from "pixi.js-legacy";
 
 const list = renderList;
@@ -14,10 +14,12 @@ const list = renderList;
 // };
 
 const getValue = (vnode) => {
-  if (!vnode.children || vnode.children.length !== 1) return null;
-  const node = vnode.children[0];
-  if (node.tag !== undefined || !node.text) return null;
-  return node.text.trim();
+  if (vnode.children && vnode.children.length === 1) {
+    const node = vnode.children[0];
+    if (node.tag === undefined && node.text) return node.text.trim();
+  }
+  if (valueList[vnode]) return valueList(vnode.data);
+  return null;
 };
 // const updateValue = (textNode, parent) => {
 //   if (parent) {
