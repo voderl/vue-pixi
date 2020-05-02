@@ -50,7 +50,7 @@ export const controller = {
     }
   },
 };
-
+// change end
 const hooks = ["create", "activate", "update", "remove", "destroy"];
 
 function sameVnode(a, b) {
@@ -144,29 +144,12 @@ export function createPatchFunction(backend) {
   }
 
   let creatingElmInVPre = 0;
-  function createElm(
-    vnode,
-    insertedVnodeQueue,
-    parentElm,
-    refElm,
-    nested,
-    ownerArray,
-    index
-  ) {
-    if (isDef(vnode.elm) && isDef(ownerArray)) {
-      // This vnode was used in a previous render!
-      // now it's used as a new node, overwriting its elm would cause
-      // potential patch errors down the road when it's used as an insertion
-      // reference node. Instead, we clone the node on-demand before creating
-      // associated DOM element for it.
-      vnode = ownerArray[index] = cloneVNode(vnode);
-    }
-
-    vnode.isRootInsert = !nested; // for transition enter check
-    if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
-      return;
-    }
-
+  // change
+  /**
+   * 实际创建elm，本来的createElm还有可能创建组件(如果组件也在controller里面的话不能正常触发hook)，在此剥离成两个，在createChildren中
+   * 挟持创建elm的部分进入controller流程。
+   */
+  function realCreateElm(vnode, insertedVnodeQueue, parentElm, refElm) {
     let data = vnode.data;
     const children = vnode.children;
     const tag = vnode.tag;
@@ -229,8 +212,56 @@ export function createPatchFunction(backend) {
       insert(parentElm, vnode.elm, refElm);
     }
   }
-  //change
-  controller.update = createElm;
+  controller.update = realCreateElm;
+  function createElm(
+    vnode,
+    insertedVnodeQueue,
+    parentElm,
+    refElm,
+    nested,
+    ownerArray,
+    index
+  ) {
+    if (isDef(vnode.elm) && isDef(ownerArray)) {
+      // This vnode was used in a previous render!
+      // now it's used as a new node, overwriting its elm would cause
+      // potential patch errors down the road when it's used as an insertion
+      // reference node. Instead, we clone the node on-demand before creating
+      // associated DOM element for it.
+      vnode = ownerArray[index] = cloneVNode(vnode);
+    }
+
+    vnode.isRootInsert = !nested; // for transition enter check
+    if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
+      return;
+    }
+    realCreateElm(vnode, insertedVnodeQueue, parentElm, refElm);
+  }
+  function createElmController(
+    vnode,
+    insertedVnodeQueue,
+    parentElm,
+    refElm,
+    nested,
+    ownerArray,
+    index
+  ) {
+    if (isDef(vnode.elm) && isDef(ownerArray)) {
+      // This vnode was used in a previous render!
+      // now it's used as a new node, overwriting its elm would cause
+      // potential patch errors down the road when it's used as an insertion
+      // reference node. Instead, we clone the node on-demand before creating
+      // associated DOM element for it.
+      vnode = ownerArray[index] = cloneVNode(vnode);
+    }
+
+    vnode.isRootInsert = !nested; // for transition enter check
+    if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
+      return;
+    }
+    controller.list.push([vnode, insertedVnodeQueue, parentElm, refElm]);
+  }
+  // change end
 
   function createComponent(vnode, insertedVnodeQueue, parentElm, refElm) {
     let i = vnode.data;
@@ -315,24 +346,17 @@ export function createPatchFunction(backend) {
         checkDuplicateKeys(children);
       }
       for (let i = 0; i < children.length; ++i) {
-        controller.list.push([
+        // change
+        createElmController(
           children[i],
           insertedVnodeQueue,
           vnode.elm,
           null,
           true,
           children,
-          i,
-        ]);
-        // createElm(
-        //   children[i],
-        //   insertedVnodeQueue,
-        //   vnode.elm,
-        //   null,
-        //   true,
-        //   children,
-        //   i
-        // );
+          i
+        );
+        // change end
       }
     } else if (isPrimitive(vnode.text)) {
       nodeOps.appendChild(
