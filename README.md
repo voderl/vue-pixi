@@ -138,16 +138,18 @@ value1 的优先级大于 value2，当没有 value1 时按照 value2 处理。
 
 ```jsx
 <zone
-    :width=100
-    :height=100
-    :radius=0.2   [0~0.5]的一个值
-    :fillColor='red'
-    :fillAlpha=1  [0~1]
-    :lineWidth=3	strokeLine的宽度
-    :lineColor='blue'
-    :lineAlpha=1  [0~1]
-    :alignment=1	strokeLine相对zone的位置，如果为0.5线宽一半在里面，一半在外面
+  :style="{
+    width: 100,
+    height: 100,
+    radius: 0.2,   [0~0.5]的一个值
+    fillColor: 'red',
+    fillAlpha: 1,  [0~1]
+    lineWidth: 3,	strokeLine的宽度
+    lineColor: 'blue',
+    lineAlpha: 1,  [0~1]
+    alignment: 1,	strokeLine相对zone的位置，如果为0.5线宽一半在里面，一半在外面
     				为1表明全部在外面
+  }"
     >
 </zone>
 ```
