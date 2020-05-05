@@ -29,28 +29,6 @@ import {
 } from "../util/index";
 
 export const emptyNode = new VNode("", {}, []);
-// change
-const performance = window.performance;
-export const controller = {
-  list: [],
-  count: 20,
-  maxTime: 3,
-  update: null,
-  loop() {
-    if (this.list.length === 0) return;
-    const start = performance.now();
-    const { list, maxTime, count } = this;
-    let now = start;
-    while (now - start < maxTime && list.length !== 0) {
-      const data = list.splice(0, count);
-      data.forEach((args) => {
-        this.update(...args);
-      });
-      now = performance.now();
-    }
-  },
-};
-// change end
 const hooks = ["create", "activate", "update", "remove", "destroy"];
 
 function sameVnode(a, b) {
@@ -212,7 +190,12 @@ export function createPatchFunction(backend) {
       insert(parentElm, vnode.elm, refElm);
     }
   }
-  controller.update = realCreateElm;
+  // controller.update = function (vnode, insertedVnodeQueue, parentElm, refElm) {
+  //   if (vnode.elm) {
+  //     console.log(vnode.elm, parentElm, refElm);
+  //     insert(parentElm, vnode.elm, refElm);
+  //   } else realCreateElm(vnode, insertedVnodeQueue, parentElm, refElm);
+  // };
   function createElm(
     vnode,
     insertedVnodeQueue,
@@ -259,7 +242,8 @@ export function createPatchFunction(backend) {
     if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
       return;
     }
-    controller.list.push([vnode, insertedVnodeQueue, parentElm, refElm]);
+    realCreateElm(vnode, insertedVnodeQueue, parentElm, refElm);
+    // controller.list.push([vnode, insertedVnodeQueue, parentElm, refElm]);
   }
   // change end
 
@@ -276,6 +260,7 @@ export function createPatchFunction(backend) {
       // in that case we can just return the element and be done.
       if (isDef(vnode.componentInstance)) {
         initComponent(vnode, insertedVnodeQueue);
+        // controller.list.push([vnode, undefined, parentElm, refElm]);
         insert(parentElm, vnode.elm, refElm);
         if (isTrue(isReactivated)) {
           reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm);
