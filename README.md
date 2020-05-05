@@ -289,6 +289,15 @@ http://voderl.cn/try3
 - 增加一些内部 hook，比如获取 Texture 等方法
 - 增加默认组件，如 hero 组件，hero 组件可指定是否 control 操作。
 - 可以考虑增加单个组件，组件内容可自行创造，就像 vue 创建 canvas 元素一样，内部的操作自行实现。
+- 增加一个可自定义标签的函数 如，Vue.register
+- 更改基础的 diff 函数，或者增加基础指令，比如自定义对 show、hide 的处理，拓展一个 diff 对象
+- 增加 hitArea 属性，比如要手动扩大点击范围
+- 最主要的是，当一个不确定宽度或者高度的元素排列了，那怎么进行排版
+- 注册一个 Container
+- patch 的操作是异步的，导致\$refs 获取不到，请全部 patch 完成后再触发 mountedHook
+- 每一个节点 在生成时，可以不设置，在被加入时，都触发 parent 的 sizeChange 在被删除时都触发 parent 的 sizeChange 在被改变
+- 在 child 被加入或被移除时，触发检测自身 size 改变的函数，在自身改变后，向上触发检测自身改变，检测自身改变触发自身改变再向上触发检测自身改变
+- 流程控制, 被我干掉了，(异步好恶心，数不清的 bug)。为了性能，顶多在 nodeOps 里面增加删除节点时使用流程控制了。毕竟第一次渲染也要好几十 ms
 
 ## Project setup
 

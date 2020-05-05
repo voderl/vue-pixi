@@ -198,6 +198,11 @@ function reRender(vnode, options) {
   const node = createElement(vnode.tag, vnode);
   const removed = oldNode.removeChildren();
   const parent = oldNode.parent;
+  if (removed.length > 0) {
+    node.addChild(...removed);
+  }
+  vnode.elm = node;
+  options.update(node, vnode.data, {});
   if (parent) {
     const index = parent.getChildIndex(oldNode);
     if (index > -1) {
@@ -205,11 +210,6 @@ function reRender(vnode, options) {
       parent.addChildAt(node, index);
     }
   }
-  if (removed.length > 0) {
-    node.addChild(...removed);
-  }
-  vnode.elm = node;
-  options.update(node, vnode.data, {});
   oldNode.destroy();
 }
 export default {

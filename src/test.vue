@@ -1,7 +1,9 @@
 <template>
   <tiling :x="0" :width="416" :height="416" @pointerdown="sayHello" src="./ground.png">
     <graphics></graphics>
+    <content :x="100" :y="100" text="\d哈好\r[red]哈哈哈\r哈或"></content>
     <zone
+      v-show="true"
       :x="100"
       :style="{
         width: 100,
@@ -16,7 +18,7 @@
         style="fill: green"
         :fit="[100, 100]"
         @pointerdown.once="cool"
-        >{{ data + '' }}</text
+        >{{ data + '\ndas sad ' }}</text
       >
       <text>{{ data + 'cool' }}</text>
       <sprite :x="50" :y="50" :scale="0.5" src="./logo.png" @pointerdown="sayHello"></sprite>
@@ -26,11 +28,13 @@
 </template>
 <script>
 import hero from './hero.vue';
+import content from './content.vue';
 
 export default {
   name: 'test',
   components: {
     hero,
+    content,
   },
   data() {
     return {

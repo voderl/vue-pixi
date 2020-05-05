@@ -6,17 +6,19 @@
 <script>
 import book from './book.vue';
 import test from './test.vue';
+import layout from './layout.vue';
 
 export default {
   name: 'ui',
   data() {
     return {
-      current: 'test',
+      current: 'layout',
     };
   },
   components: {
     book,
     test,
+    layout,
   },
   created() {
     this.data = {};

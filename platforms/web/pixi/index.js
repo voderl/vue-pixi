@@ -17,7 +17,7 @@ import {
 } from "web/util/index";
 
 import { patch } from "./patch";
-// import platformDirectives from './directives/index'
+import platformDirectives from "./directives/index";
 // import platformComponents from './components/index'
 
 // install platform specific utils
@@ -28,7 +28,7 @@ Vue.config.getTagNamespace = getTagNamespace;
 Vue.config.isUnknownElement = isUnknownElement;
 Vue.pixiConfig = pixiConfig;
 // install platform runtime directives & components
-// extend(Vue.options.directives, platformDirectives)
+extend(Vue.options.directives, platformDirectives);
 // extend(Vue.options.components, platformComponents)
 
 // install platform patch function

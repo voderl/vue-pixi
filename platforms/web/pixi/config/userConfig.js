@@ -17,7 +17,12 @@ import {
 } from "pixi.js-legacy";
 import utils from "./utils";
 import pixiConfig from "./pixiConfig";
-
+import layoutController from "../layout/layoutController";
+import {
+  testSizeChange,
+  isAbsolute,
+  isLayOutRoot,
+} from "../layout/elementUtils";
 /**
  * TODO: 允许re-render 还有 show hide 时间，show hide感觉较为麻烦
  *
@@ -25,12 +30,27 @@ import pixiConfig from "./pixiConfig";
  *
  * 做一个类， 方法 re-render 从一个vnode，渲染出来，然后替换掉之前的el
  *
- * on 支持 stop once 等方法，替换掉原有的on
- * 重写一个tween.js
  */
 /**
  * 默认diff更新逻辑, 事件更新使用vue内部方法。
  */
+function getLayoutRoot(el) {
+  // if (isAbsolute(el)) return null;
+  let parent = el.parent;
+  while (parent !== null) {
+    if (isLayOutRoot(parent)) return parent;
+    parent = parent.parent;
+  }
+  return null;
+}
+function childChange(child) {
+  if (child && !isAbsolute(child)) {
+    console.log("hide");
+    child.renderable = false;
+  }
+  this.forceUpdate = true;
+  layoutController.add(this);
+}
 const defaultUpdate = {
   /** 一般属性在这里 */
   class(el, value, oldValue, options) {
@@ -66,13 +86,31 @@ const defaultUpdate = {
         }
       }
     },
-    width(el, value) {
+    /**
+     * 不支持width，height。 width、height默认变为布局设置，如需设置请更改scale和data
+     */
+    width(el, value = 100) {
       if (value === undefined) el.scale.x = 1;
       else el.width = value;
     },
-    height(el, value) {
+    height(el, value = 100) {
       if (value === undefined) el.scale.y = 1;
       el.height = value;
+    },
+    alpha(el, value = 1) {
+      el.alpha = value;
+    },
+    angle(el, value = 0) {
+      el.angle = value;
+    },
+    display: {
+      $dirty(el, newValue, oldValue) {
+        if ((newValue.width && newValue.height) || newValue.flex) {
+          el.layoutRoot = true;
+          childChange.apply(el);
+        } else el.layoutRoot = false;
+        el.display = newValue;
+      },
     },
     tint(el, value = 0x0) {
       el.tint = utils.getColor(value);
@@ -108,6 +146,19 @@ const defaultUpdate = {
     },
   },
   $dirty(el, data, oldData) {
+    // if create layout root
+    if (isLayOutRoot(el) && !el.parent) {
+      childChange.apply(el);
+      el.children.forEach((child) => (child.renderable = false));
+      el.on("childAdded", childChange);
+      el.on("childRemoved", childChange);
+    }
+    const layoutRoot = getLayoutRoot(el);
+    if (layoutRoot && testSizeChange(el)) {
+      if (isLayOutRoot(el)) childChange.call(el);
+      if (el.parent === layoutRoot) childChange.call(layoutRoot, el);
+      layoutController.add(layoutRoot);
+    }
     if (data.attrs && data.attrs.fit) {
       methods.fitNode(el, data.attrs.fit);
     }

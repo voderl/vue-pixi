@@ -32,6 +32,29 @@ const getValue = (vnode) => {
 //     valueList[node.tagName](node, textNode.text, textNode.oldText);
 //   }
 // };
+// 流程控制，应该不加的
+const performance = window.performance;
+const controller = {
+  list: [],
+  func: {},
+  count: 40,
+  update: null,
+  // 比如子节点 ，元素生成了，还不能插入进去，因为可能前面节点还没加入，因此会有乱序错误
+  insertController() {},
+  loop() {
+    if (this.list.length === 0) return;
+    const start = performance.now();
+    const { list, maxTime, count } = this;
+    let now = start;
+    while (now - start < maxTime && list.length !== 0) {
+      const data = list.splice(0, count);
+      data.forEach((args) => {
+        this.update(...args);
+      });
+      now = performance.now();
+    }
+  },
+};
 
 export function createElement(tagName, vnode) {
   if (!list[tagName]) throw new Error(`无${tagName}节点`);

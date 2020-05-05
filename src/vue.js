@@ -5703,6 +5703,35 @@
       return obj;
     },
     /**
+     * 实现的一个filter， 直接改变源数组，(怕filter生成新数组影响原数组回收,或带来回收成本)
+     * 也不知道到底有没有什么好处，先这样= =
+     * @param {array} arr
+     * @param {function} func
+     */
+    filter: function filter(arr, func) {
+      var keep = false;
+      var start = 0;
+      var deleteCount = 0;
+      var len = arr.length;
+      for (var i = 0; i < len - deleteCount; i++) {
+        if (func(arr[i], deleteCount + i)) {
+          if (keep) {
+            keep = !keep;
+            arr.splice(start, i - start);
+            deleteCount += i - start;
+            i = start;
+          }
+        } else if (!keep) {
+          start = i;
+          keep = !keep;
+        }
+      }
+      if (keep) {
+        arr.splice(start, arr.length - start);
+      }
+      return arr;
+    },
+    /**
      * deep assign data 到 obj
      * @param {object} obj
      * @param {object} data
@@ -5949,10 +5978,485 @@
     autoload: true,
   };
 
+  function isAbsolute(el) {
+    if (el.$x !== undefined || el.$y !== undefined) { return true; }
+    else { return false; }
+  }
+
+  function isLayOutRoot(el) {
+    return el.layoutRoot ? true : false;
+  }
+
+  function isArrayEquals(arr1, arr2) {
+    if (arr1 === arr2) { return true; }
+    if (typeof arr1 === "object" && typeof arr2 === "object") {
+      var len = arr1.length;
+      if (arr2.length !== len) { return false; }
+      for (var i = 0; i < len; i++) {
+        if (arr1[i] !== arr2[i]) { return false; }
+      }
+      return true;
+    }
+    return false;
+  }
+  /**
+   * 如果设置为flex而自身不带宽高则从此获取其宽高
+   * @param {DisplayObject} el
+   */
+  function getLayOutRootSize(el) {
+    var width = el.display.width,
+      height = el.display.height;
+    if (width && height) { return [width, height]; }
+    var children = el.children;
+    // el.children.forEach((child) => (child.renderable = false));
+    el.children = [];
+    var bounds = el.getLocalBounds();
+    el.children = children;
+    // el.children.forEach((child) => (child.renderable = true));
+    if (bounds.width === 0 || bounds.height === 0) {
+      throw new Error("使用了flex而未指定宽高，而且自身没有默认宽高");
+    }
+    if (!width) { width = bounds.width; }
+    if (!height) { height = bounds.height; }
+    return [width, height];
+  }
+
+  function testSizeChange(el) {
+    var assign;
+
+    var newWidth, newHeight;
+    var scale = el.scale.x;
+    var newPadding;
+    if (isLayOutRoot(el)) {
+      scale = 1;
+      (assign = getLayOutRootSize(el), newWidth = assign[0], newHeight = assign[1]);
+      newPadding = el.display.padding;
+    } else {
+      if (el.display) { newPadding = el.display.padding; }
+      newWidth = el.width;
+      newHeight = el.height;
+    }
+    newWidth = Math.floor(newWidth / scale);
+    newHeight = Math.floor(newHeight / scale);
+    if (!el.size) {
+      el.size = { width: newWidth, height: newHeight, padding: newPadding };
+      return true;
+    }
+    var ref = el.size;
+    var width = ref.width;
+    var height = ref.height;
+    var padding = ref.padding;
+    if (
+      width !== newWidth ||
+      height !== newHeight ||
+      !isArrayEquals(newPadding, padding)
+    ) {
+      el.size = { width: newWidth, height: newHeight, padding: newPadding };
+      return true;
+    }
+    return false;
+  }
+
+  function getPadding(arr) {
+    var assign;
+
+    if (arr instanceof Array) {
+      var left;
+      var right;
+      var bottom;
+      var top;
+
+      if (arr.length === 1) {
+        left = right = bottom = top = arr[0];
+      } else if (arr.length === 2) {
+        bottom = top = arr[0];
+        left = right = arr[1];
+      } else if (arr.length === 3) {
+        top = arr[0];
+        (left = right = arr[1]), (bottom = arr[2]);
+      } else if (arr.length === 4) {
+        (assign = arr, top = assign[0], right = assign[1], bottom = assign[2], left = assign[3]);
+      } else { return false; }
+      return [top, right, bottom, left];
+    }
+    return [0, 0, 0, 0];
+  }
+  function parseSize(el) {
+    var size = el.size;
+    var ref = getPadding(size.padding);
+    var top = ref[0];
+    var right = ref[1];
+    var bottom = ref[2];
+    var left = ref[3];
+    return {
+      el: el,
+      top: top,
+      left: left,
+      width: size.width + left + right,
+      height: size.height + top + bottom,
+    };
+  }
+
+  /**
+   * 实际控制layout 的绘制方法
+   */
+
+  // 主轴的排列方式
+  var justify = {
+    start: function start(info, data) {
+      var x = 0;
+      data.forEach(function (size) {
+        size.x = x;
+        x += size.width * size.scale;
+      });
+    },
+    end: function end(info, data) {
+      var x = info.width;
+      for (var i = data.length - 1; i >= 0; i--) {
+        var size = data[i];
+        x -= size.width * size.scale;
+        size.x = x;
+      }
+    },
+    center: function center(info, data) {
+      var x = (info.width - info.dataWidth) / 2;
+      data.forEach(function (size) {
+        size.x = x;
+        x += size.width * size.scale;
+      });
+    },
+    between: function between(info, data) {
+      if (data.length === 1) { return this.center(info, data); }
+      var x = 0;
+      var interval = (info.width - info.dataWidth) / (data.length - 1);
+      data.forEach(function (size) {
+        size.x = x;
+        x += size.width * size.scale + interval;
+      });
+    },
+    around: function around(info, data) {
+      var interval = (info.width - info.dataWidth) / (2 * data.length);
+      var x = 0;
+      data.forEach(function (size) {
+        x += interval;
+        size.x = x;
+        x += size.width * size.scale + interval;
+      });
+    },
+  };
+  // 纵轴的排列方式
+  var align = {
+    start: function start(info, data) {
+      data.forEach(function (size) { return (size.y = 0); });
+    },
+    end: function end(info, data) {
+      data.forEach(function (size) { return (size.y = info.height - size.height * size.scale); });
+    },
+    center: function center(info, data) {
+      var y = info.height / 2;
+      data.forEach(function (size) { return (size.y = y - (size.height * size.scale) / 2); });
+    },
+  };
+  // 不同方向的排列方式
+  var direction = {
+    row: function row(info, data) {
+      return data;
+    },
+    rowReverse: function rowReverse(info, data) {
+      var width = info.width;
+      data.forEach(function (size) {
+        size.x = width - size.x - size.width * size.scale;
+      });
+    },
+    col: function col(info, data) {
+      var height = info.height;
+      data.forEach(function (size) {
+        var assign;
+
+        (assign = [height - size.y - size.height * size.scale, size.x], size.x = assign[0], size.y = assign[1]);
+      });
+    },
+    colReverse: function colReverse(info, data) {
+      var width = info.width;
+      this.col(info, data);
+      data.forEach(function (size) {
+        size.y = width - size.y - size.width * size.scale;
+      });
+    },
+  };
+  function doFunc(display, key, search, info, data) {
+    var value = display[key];
+    if (typeof search[value] === "function") {
+      search[value](info, data);
+    } else
+      { throw new Error(
+        ("display的" + key + "属性暂不支持" + value + "，请使用" + (Object.keys(search).join(
+          ","
+        )) + "中的一个")
+      ); }
+  }
+  /**
+   * 获取一组中数据的宽之和以及高的最大值
+   * @param {array} data 序列
+   */
+  function measure$1(data) {
+    var height = [];
+    var width = 0;
+    data.forEach(function (config) {
+      width += config.width;
+      height.push(config.height);
+    });
+    return [width, Math.max.apply(Math, height)];
+  }
+  /**
+   * 根据计算出的数据更新节点
+   * @param {object} size
+   */
+  function update(size) {
+    var scale = size.scale;
+    var el = size.el;
+    var x = size.x + size.left * scale;
+    var y = size.y + size.top * scale;
+    el.scale.set(scale, scale);
+    el.position.set(x, y);
+    el.renderable = true;
+  }
+  /**
+   * 绘制一行,计算每个的坐标和位置并绘制，config为行的配置，包括x,y,width,height
+   * @param {*} config
+   * @param {*} display
+   * @param {*} data
+   */
+  function drawLine(config, display, data) {
+    var ref = measure$1(data);
+    var width = ref[0];
+    var height = ref[1];
+    var widthRatio = config.width / width;
+    var heightRatio = config.height / height;
+    var ratio = Math.min(widthRatio, heightRatio, 1);
+    data.forEach(function (s) { return (s.scale = ratio); });
+    var info = {
+      width: config.width,
+      height: config.height,
+      dataWidth: width * ratio,
+      dataHeight: height * ratio,
+    };
+    doFunc(display, "justify", justify, info, data);
+    doFunc(display, "align", align, info, data);
+    doFunc(display, "direction", direction, info, data);
+    // justify[display.justify](info, data);
+    // align[display.align](info, data);
+    // direction[display.direction](info, data);
+    data.forEach(function (size) {
+      size.x += config.x;
+      size.y += config.y;
+      update(size);
+    });
+  }
+  /**
+   * 换行的分割函数，首先不计算scale来分割，在面临一个新加入项时，不加不够长度要扩大，加入将放缩时
+   * 根据相对变化，选取变化小的来决定是否分割以及新行换新
+   * @param {object} display
+   * @param {array} data
+   */
+  function splitLines(display, data) {
+    var lines = [];
+    var line = [];
+    var nowWidth = 0;
+    for (var i = 0, len = data.length; i < len; i++) {
+      var size = data[i];
+      if (nowWidth + size.width >= display.width) {
+        var scaleWidth1 = nowWidth / display.width; // < 1
+        var scaleWidth2 = (nowWidth + size.width) / display.width; // >1
+        if (scaleWidth1 <= 1 / scaleWidth2) {
+          // add
+          line.push(size);
+          lines.push(line);
+          line = [];
+          nowWidth = 0;
+        } else {
+          // newLine
+          lines.push(line);
+          line = [];
+          nowWidth = 0;
+          i--;
+        }
+      } else {
+        nowWidth += size.width;
+        line.push(size);
+      }
+    }
+    if (line.length > 0) {
+      lines.push(line);
+    }
+    return lines;
+  }
+
+  function calWrap(display, data) {
+    if (display.wrap === "nowrap") {
+      // 不分行
+      var lineConfig = {
+        x: 0,
+        y: 0,
+        width: display.width,
+        height: display.height,
+      };
+      drawLine(lineConfig, display, data);
+      return;
+    }
+    // 分完行
+    var lines = splitLines(display, data);
+    if (lines.length === 0) { return; }
+    // 确定每行的配置，注意使用justify的配置处理，因此先将width和height反转
+    // 计算完成后再反转回来
+    var lineConfigs = [];
+    var dataWidth = 0;
+    for (var i = 0; i < lines.length; i++) {
+      // 确定每行的高度
+      var ref = measure$1(lines[i]);
+      var height = ref[1];
+      dataWidth += height;
+      lineConfigs.push({
+        width: height,
+        height: display.width,
+        scale: 1,
+      });
+    }
+    if (dataWidth > display.width) {
+      // 如果过长则统一缩放
+      var scale = display.width / dataWidth;
+      dataWidth = display.width;
+      lineConfigs.forEach(function (config) { return (config.scale = scale); });
+    }
+    var info = {
+      width: display.height,
+      height: display.width,
+      dataWidth: dataWidth,
+      dataHeight: display.width,
+    };
+    doFunc(display, "alignContent", justify, info, lineConfigs);
+    lineConfigs.forEach(function (config) {
+      var assign;
+
+      var scale = config.scale;
+      // 计算结束后反转回来，得到每行线的配置
+      (assign = [
+        Math.floor(config.height * scale),
+        Math.floor(config.width * scale) ], config.width = assign[0], config.height = assign[1]);
+      config.y = config.x;
+      config.x = 0;
+    });
+    if (display.wrap === "wrapReverse") {
+      lineConfigs.reverse();
+    }
+    lines.forEach(function (data, i) {
+      drawLine(lineConfigs[i], display, data);
+    });
+  }
+
+  function layout(el, display, data) {
+    var assign, assign$1;
+
+    console.log("updateLayout", display, data);
+    var _display = {
+      width: display.width,
+      height: display.height,
+      wrap: display.wrap || "nowrap",
+      direction: display.direction || "row",
+      align: display.align || "center",
+      justify: display.justify || "center",
+      alignContent: display.alignContent || "center",
+    };
+    if (!_display.width || !_display.height) {
+      (assign = getLayOutRootSize(el), _display.width = assign[0], _display.height = assign[1]);
+    }
+    console.log(_display);
+    if (_display.direction.startsWith("col")) {
+      data.forEach(function (size) {
+        var assign;
+
+        (assign = [size.height, size.width], size.width = assign[0], size.height = assign[1]);
+      });
+      (assign$1 = [_display.width, _display.height], _display.height = assign$1[0], _display.width = assign$1[1]);
+    }
+    // 换行与否
+    calWrap(_display, data);
+  }
+
+  var Controller = function Controller(update) {
+    var this$1 = this;
+
+    this.list = [];
+    this.defaltFlashFrame = 3;
+    this.updateFunc = update;
+    this.tickerFunc = function () {
+      this$1.update();
+    };
+    pixi_jsLegacy.Ticker.shared.add(this.tickerFunc);
+  };
+
+  Controller.prototype.update = function update () {
+      var this$1 = this;
+
+    if (this.list.length === 0) { return; }
+    utils.filter(this.list, function (data) {
+      var el = data.el;
+      if (el._destroyed) { return false; }
+      data.num -= 1;
+      if (data.num === 0) {
+        this$1.updateFunc(el);
+        return false;
+      } else { return true; }
+    });
+  };
+
+  Controller.prototype.add = function add (el, flashFrame) {
+      if ( flashFrame === void 0 ) flashFrame = this.defaltFlashFrame;
+
+    var target = this.list.find(function (data) { return data.el === el; });
+    if (target) {
+      target.num = flashFrame;
+    } else
+      { this.list.push({
+        el: el,
+        num: flashFrame,
+      }); }
+  };
+
+  Controller.prototype.destroy = function destroy () {
+    pixi_jsLegacy.Ticker.shared.remove(this.tickerFunc);
+  };
+
+  function checkChildrenSize(el) {
+    var change = false;
+    el.children.forEach(function (child) {
+      if (isAbsolute(child)) { return; }
+      if (testSizeChange(child)) { change = true; }
+    });
+    return change;
+  }
+  var resetLayOut = function (el) {
+    // when child added(removed) or direct Child size change
+    // 不是第一代child改变，比如child的child改变，要检查child的width或height是否变化
+    // if (el.forceUpdate) {  可以考虑增加reCheck 参数
+    //   el.forceUpdate = false;
+    //   updateLayout(el);
+    // } else console.log("check");
+    console.log("dirty");
+    var change = checkChildrenSize(el);
+    if (!change && !el.forceUpdate) { return; }
+    el.forceUpdate = false;
+    var data = [];
+    el.children.forEach(function (child) {
+      if (!isAbsolute(child)) { data.push(parseSize(child)); }
+    });
+    layout(el, el.display, data);
+  };
+  var layoutController = new Controller(resetLayOut);
+
   /**
    * 便于自定义 新增标签的地方
    */
-
   /**
    * TODO: 允许re-render 还有 show hide 时间，show hide感觉较为麻烦
    *
@@ -5960,12 +6464,27 @@
    *
    * 做一个类， 方法 re-render 从一个vnode，渲染出来，然后替换掉之前的el
    *
-   * on 支持 stop once 等方法，替换掉原有的on
-   * 重写一个tween.js
    */
   /**
    * 默认diff更新逻辑, 事件更新使用vue内部方法。
    */
+  function getLayoutRoot(el) {
+    // if (isAbsolute(el)) return null;
+    var parent = el.parent;
+    while (parent !== null) {
+      if (isLayOutRoot(parent)) { return parent; }
+      parent = parent.parent;
+    }
+    return null;
+  }
+  function childChange(child) {
+    if (child && !isAbsolute(child)) {
+      console.log("hide");
+      child.renderable = false;
+    }
+    this.forceUpdate = true;
+    layoutController.add(this);
+  }
   var defaultUpdate = {
     /** 一般属性在这里 */
     class: function class$1(el, value, oldValue, options) {
@@ -6007,13 +6526,39 @@
           }
         }
       },
+      /**
+       * 不支持width，height。 width、height默认变为布局设置，如需设置请更改scale和data
+       */
       width: function width(el, value) {
+        if ( value === void 0 ) value = 100;
+
         if (value === undefined) { el.scale.x = 1; }
         else { el.width = value; }
       },
       height: function height(el, value) {
+        if ( value === void 0 ) value = 100;
+
         if (value === undefined) { el.scale.y = 1; }
         el.height = value;
+      },
+      alpha: function alpha(el, value) {
+        if ( value === void 0 ) value = 1;
+
+        el.alpha = value;
+      },
+      angle: function angle(el, value) {
+        if ( value === void 0 ) value = 0;
+
+        el.angle = value;
+      },
+      display: {
+        $dirty: function $dirty(el, newValue, oldValue) {
+          if ((newValue.width && newValue.height) || newValue.flex) {
+            el.layoutRoot = true;
+            childChange.apply(el);
+          } else { el.layoutRoot = false; }
+          el.display = newValue;
+        },
       },
       tint: function tint(el, value) {
         if ( value === void 0 ) value = 0x0;
@@ -6065,6 +6610,19 @@
       },
     },
     $dirty: function $dirty(el, data, oldData) {
+      // if create layout root
+      if (isLayOutRoot(el) && !el.parent) {
+        childChange.apply(el);
+        el.children.forEach(function (child) { return (child.renderable = false); });
+        el.on("childAdded", childChange);
+        el.on("childRemoved", childChange);
+      }
+      var layoutRoot = getLayoutRoot(el);
+      if (layoutRoot && testSizeChange(el)) {
+        if (isLayOutRoot(el)) { childChange.call(el); }
+        if (el.parent === layoutRoot) { childChange.call(layoutRoot, el); }
+        layoutController.add(layoutRoot);
+      }
       if (data.attrs && data.attrs.fit) {
         methods.fitNode(el, data.attrs.fit);
       }
@@ -6470,6 +7028,8 @@
   //     valueList[node.tagName](node, textNode.text, textNode.oldText);
   //   }
   // };
+  // 流程控制，应该不加的
+  var performance$1 = window.performance;
 
   function createElement$1(tagName, vnode) {
     if (!list$1[tagName]) { throw new Error(("无" + tagName + "节点")); }
@@ -6629,35 +7189,6 @@
    */
 
   var emptyNode = new VNode("", {}, []);
-  // change
-  var performance$1 = window.performance;
-  var controller = {
-    list: [],
-    count: 20,
-    maxTime: 3,
-    update: null,
-    loop: function loop() {
-      var this$1 = this;
-
-      if (this.list.length === 0) { return; }
-      var start = performance$1.now();
-      var ref$$1 = this;
-      var list = ref$$1.list;
-      var maxTime = ref$$1.maxTime;
-      var count = ref$$1.count;
-      var now = start;
-      while (now - start < maxTime && list.length !== 0) {
-        var data = list.splice(0, count);
-        data.forEach(function (args) {
-          var ref$$1;
-
-          (ref$$1 = this$1).update.apply(ref$$1, args);
-        });
-        now = performance$1.now();
-      }
-    },
-  };
-  // change end
   var hooks = ["create", "activate", "update", "remove", "destroy"];
 
   function sameVnode(a, b) {
@@ -6802,7 +7333,12 @@
         insert(parentElm, vnode.elm, refElm);
       }
     }
-    controller.update = realCreateElm;
+    // controller.update = function (vnode, insertedVnodeQueue, parentElm, refElm) {
+    //   if (vnode.elm) {
+    //     console.log(vnode.elm, parentElm, refElm);
+    //     insert(parentElm, vnode.elm, refElm);
+    //   } else realCreateElm(vnode, insertedVnodeQueue, parentElm, refElm);
+    // };
     function createElm(
       vnode,
       insertedVnodeQueue,
@@ -6849,7 +7385,8 @@
       if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
         return;
       }
-      controller.list.push([vnode, insertedVnodeQueue, parentElm, refElm]);
+      realCreateElm(vnode, insertedVnodeQueue, parentElm, refElm);
+      // controller.list.push([vnode, insertedVnodeQueue, parentElm, refElm]);
     }
     // change end
 
@@ -6866,6 +7403,7 @@
         // in that case we can just return the element and be done.
         if (isDef(vnode.componentInstance)) {
           initComponent(vnode, insertedVnodeQueue);
+          // controller.list.push([vnode, undefined, parentElm, refElm]);
           insert(parentElm, vnode.elm, refElm);
           if (isTrue(isReactivated)) {
             reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm);
@@ -8017,13 +8555,13 @@
       newData: newVnode.data,
       oldData: oldVnode.data,
       reRender: false,
-      update: update,
+      update: update$1,
     };
     options.update();
     // controller.list.push(options);
   };
   // update 来更新 ，包括判断是否需要reRender， 以及可以diff，自动推断diffObj
-  function update(el, newData, oldData) {
+  function update$1(el, newData, oldData) {
     if ( el === void 0 ) el = this.vnode.elm;
 
     var options =
@@ -8036,7 +8574,7 @@
             newData: newData,
             oldData: oldData,
             reRender: false,
-            update: update,
+            update: update$1,
           };
     newData = options.newData;
     oldData = options.oldData;
@@ -8070,6 +8608,11 @@
     var node = createElement$1(vnode.tag, vnode);
     var removed = oldNode.removeChildren();
     var parent = oldNode.parent;
+    if (removed.length > 0) {
+      node.addChild.apply(node, removed);
+    }
+    vnode.elm = node;
+    options.update(node, vnode.data, {});
     if (parent) {
       var index = parent.getChildIndex(oldNode);
       if (index > -1) {
@@ -8077,11 +8620,6 @@
         parent.addChildAt(node, index);
       }
     }
-    if (removed.length > 0) {
-      node.addChild.apply(node, removed);
-    }
-    vnode.elm = node;
-    options.update(node, vnode.data, {});
     oldNode.destroy();
   }
   var data = {
@@ -8114,17 +8652,259 @@
 
   /*  */
 
-  pixi_jsLegacy.Ticker.shared.add(function () {
-    controller.loop();
-  });
   // the directive module should be applied last, after all
   // built-in modules have been applied.
   var modules = platformModules.concat(baseModules);
 
   var patch = createPatchFunction({ nodeOps: nodeOps, modules: modules });
 
+  /**
+   * Not type checking this file because flow doesn't like attaching
+   * properties to Elements.
+   */
+
+  /* istanbul ignore if */
+  if (isIE9) {
+    // http://www.matts411.com/post/internet-explorer-9-oninput/
+    document.addEventListener("selectionchange", function () {
+      var el = document.activeElement;
+      if (el && el.vmodel) {
+        trigger(el, "input");
+      }
+    });
+  }
+  // const directive = {
+  //   inserted (el, binding, vnode, oldVnode) {
+  //     if (vnode.tag === 'select') {
+  //       // #6903
+  //       if (oldVnode.elm && !oldVnode.elm._vOptions) {
+  //         mergeVNodeHook(vnode, 'postpatch', () => {
+  //           directive.componentUpdated(el, binding, vnode)
+  //         })
+  //       } else {
+  //         setSelected(el, binding, vnode.context)
+  //       }
+  //       el._vOptions = [].map.call(el.options, getValue)
+  //     } else if (vnode.tag === 'textarea' || isTextInputType(el.type)) {
+  //       el._vModifiers = binding.modifiers
+  //       if (!binding.modifiers.lazy) {
+  //         el.addEventListener('compositionstart', onCompositionStart)
+  //         el.addEventListener('compositionend', onCompositionEnd)
+  //         // Safari < 10.2 & UIWebView doesn't fire compositionend when
+  //         // switching focus before confirming composition choice
+  //         // this also fixes the issue where some browsers e.g. iOS Chrome
+  //         // fires "change" instead of "input" on autocomplete.
+  //         el.addEventListener('change', onCompositionEnd)
+  //         /* istanbul ignore if */
+  //         if (isIE9) {
+  //           el.vmodel = true
+  //         }
+  //       }
+  //     }
+  //   },
+
+  //   componentUpdated (el, binding, vnode) {
+  //     if (vnode.tag === 'select') {
+  //       setSelected(el, binding, vnode.context)
+  //       // in case the options rendered by v-for have changed,
+  //       // it's possible that the value is out-of-sync with the rendered options.
+  //       // detect such cases and filter out values that no longer has a matching
+  //       // option in the DOM.
+  //       const prevOptions = el._vOptions
+  //       const curOptions = el._vOptions = [].map.call(el.options, getValue)
+  //       if (curOptions.some((o, i) => !looseEqual(o, prevOptions[i]))) {
+  //         // trigger change event if
+  //         // no matching option found for at least one value
+  //         const needReset = el.multiple
+  //           ? binding.value.some(v => hasNoMatchingOption(v, curOptions))
+  //           : binding.value !== binding.oldValue && hasNoMatchingOption(binding.value, curOptions)
+  //         if (needReset) {
+  //           trigger(el, 'change')
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+
+  // function setSelected (el, binding, vm) {
+  //   actuallySetSelected(el, binding, vm)
+  //   /* istanbul ignore if */
+  //   if (isIE || isEdge) {
+  //     setTimeout(() => {
+  //       actuallySetSelected(el, binding, vm)
+  //     }, 0)
+  //   }
+  // }
+
+  // function actuallySetSelected (el, binding, vm) {
+  //   const value = binding.value
+  //   const isMultiple = el.multiple
+  //   if (isMultiple && !Array.isArray(value)) {
+  //     "development" !== 'production' && warn(
+  //       `<select multiple v-model="${binding.expression}"> ` +
+  //       `expects an Array value for its binding, but got ${
+  //         Object.prototype.toString.call(value).slice(8, -1)
+  //       }`,
+  //       vm
+  //     )
+  //     return
+  //   }
+  //   let selected, option
+  //   for (let i = 0, l = el.options.length; i < l; i++) {
+  //     option = el.options[i]
+  //     if (isMultiple) {
+  //       selected = looseIndexOf(value, getValue(option)) > -1
+  //       if (option.selected !== selected) {
+  //         option.selected = selected
+  //       }
+  //     } else {
+  //       if (looseEqual(getValue(option), value)) {
+  //         if (el.selectedIndex !== i) {
+  //           el.selectedIndex = i
+  //         }
+  //         return
+  //       }
+  //     }
+  //   }
+  //   if (!isMultiple) {
+  //     el.selectedIndex = -1
+  //   }
+  // }
+
+  // function hasNoMatchingOption (value, options) {
+  //   return options.every(o => !looseEqual(o, value))
+  // }
+
+  // function getValue (option) {
+  //   return '_value' in option
+  //     ? option._value
+  //     : option.value
+  // }
+
+  // function onCompositionStart (e) {
+  //   e.target.composing = true
+  // }
+
+  // function onCompositionEnd (e) {
+  //   // prevent triggering an input event for no reason
+  //   if (!e.target.composing) return
+  //   e.target.composing = false
+  //   trigger(e.target, 'input')
+  // }
+
+  // function trigger (el, type) {
+  //   const e = document.createEvent('HTMLEvents')
+  //   e.initEvent(type, true, true)
+  //   el.dispatchEvent(e)
+  // }
+
+  // export default directive
+
   /*  */
-  // import platformDirectives from './directives/index'
+
+  /*  */
+
+  var hasTransition = inBrowser && !isIE9;
+  if (hasTransition) {
+    /* istanbul ignore if */
+    if (window.ontransitionend === undefined &&
+      window.onwebkittransitionend !== undefined
+    ) ;
+    if (window.onanimationend === undefined &&
+      window.onwebkitanimationend !== undefined
+    ) ;
+  }
+
+  // binding to window is necessary to make hot reload work in IE in strict mode
+  var raf = inBrowser
+    ? window.requestAnimationFrame
+      ? window.requestAnimationFrame.bind(window)
+      : setTimeout
+    : /* istanbul ignore next */ function (fn) { return fn(); };
+
+  /*  */
+
+  /*  */
+  function setVisible(el, value) {
+    if (value) { el.visible = true; }
+    else { el.visible = false; }
+  }
+  var show = {
+    bind: function bind(el, ref, vnode) {
+      var value = ref.value;
+
+      setVisible(el, value);
+    },
+
+    update: function update(el, ref) {
+      var value = ref.value;
+      var oldValue = ref.oldValue;
+
+      if (!value === !oldValue) { return; }
+      setVisible(el, value);
+    },
+
+    unbind: function unbind(el, binding, vnode, oldVnode, isDestroy) {
+      if (!isDestroy) { setVisible(el, false); }
+    },
+  };
+
+  // export default {
+  //   bind (el: any, { value }: VNodeDirective, vnode: VNodeWithData) {
+  //     vnode = locateNode(vnode)
+  //     const transition = vnode.data && vnode.data.transition
+  //     const originalDisplay = el.__vOriginalDisplay =
+  //       el.style.display === 'none' ? '' : el.style.display
+  //     if (value && transition) {
+  //       vnode.data.show = true
+  //       enter(vnode, () => {
+  //         el.style.display = originalDisplay
+  //       })
+  //     } else {
+  //       el.style.display = value ? originalDisplay : 'none'
+  //     }
+  //   },
+
+  //   update (el: any, { value, oldValue }: VNodeDirective, vnode: VNodeWithData) {
+  //     /* istanbul ignore if */
+  //     if (!value === !oldValue) return
+  //     vnode = locateNode(vnode)
+  //     const transition = vnode.data && vnode.data.transition
+  //     if (transition) {
+  //       vnode.data.show = true
+  //       if (value) {
+  //         enter(vnode, () => {
+  //           el.style.display = el.__vOriginalDisplay
+  //         })
+  //       } else {
+  //         leave(vnode, () => {
+  //           el.style.display = 'none'
+  //         })
+  //       }
+  //     } else {
+  //       el.style.display = value ? el.__vOriginalDisplay : 'none'
+  //     }
+  //   },
+
+  //   unbind (
+  //     el: any,
+  //     binding: VNodeDirective,
+  //     vnode: VNodeWithData,
+  //     oldVnode: VNodeWithData,
+  //     isDestroy: boolean
+  //   ) {
+  //     if (!isDestroy) {
+  //       el.style.display = el.__vOriginalDisplay
+  //     }
+  //   }
+  // }
+
+  var platformDirectives = {
+    // model,
+    show: show,
+  };
+
+  /*  */
   // import platformComponents from './components/index'
 
   // install platform specific utils
@@ -8135,7 +8915,7 @@
   Vue.config.isUnknownElement = isUnknownElement;
   Vue.pixiConfig = pixiConfig;
   // install platform runtime directives & components
-  // extend(Vue.options.directives, platformDirectives)
+  extend(Vue.options.directives, platformDirectives);
   // extend(Vue.options.components, platformComponents)
 
   // install platform patch function
@@ -9149,7 +9929,7 @@
   var slotRE = /^v-slot(:|$)|^#/;
 
   var lineBreakRE = /[\r\n]/;
-  var whitespaceRE = /\s+/g;
+  var whitespaceRE$1 = /\s+/g;
 
   var invalidAttributeRE = /[\s"'<>\/=]/;
 
@@ -9464,7 +10244,7 @@
         if (text) {
           if (!inPre && whitespaceOption === 'condense') {
             // condense consecutive whitespaces into single space
-            text = text.replace(whitespaceRE, ' ');
+            text = text.replace(whitespaceRE$1, ' ');
           }
           var res;
           var child;
@@ -10147,14 +10927,14 @@
     return createASTElement(el.tag, el.attrsList.slice(), el.parent)
   }
 
-  var model = {
+  var model$1 = {
     preTransformNode: preTransformNode
   };
 
   var modules$1 = [
     klass,
     style,
-    model
+    model$1
   ];
 
   /*  */
@@ -10165,7 +10945,7 @@
   // so we used some reserved tokens during compile.
   var RANGE_TOKEN = '__r';
 
-  function model$1 (
+  function model$2 (
     el,
     dir,
     _warn
@@ -10348,7 +11128,7 @@
   }
 
   var directives$1 = {
-    model: model$1,
+    model: model$2,
     text: text,
     html: html
   };

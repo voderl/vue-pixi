@@ -1,7 +1,7 @@
 // import Vue from '../../dist/vue.runtime.js';
 import * as $ from 'pixi.js-legacy';
 import TWEEN from '@tweenjs/tween.js';
-import Vue from './vue.runtime.js';
+import Vue from './vue.js';
 import ui from './ui.vue';
 
 window.TWEEN = TWEEN;
