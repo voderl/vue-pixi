@@ -1,5 +1,8 @@
 # vue-pixi
 
+目前 vue 文件的生成在 fork 的 vue 库中更新，此项目暂时搁置，等到更多细节确定后作为 template
+https://github.com/voderl/vue
+
 - [vue-pixi](#vue-pixi)
   - [pixi 拓展](#pixi-%e6%8b%93%e5%b1%95)
   - [基本类型](#%e5%9f%ba%e6%9c%ac%e7%b1%bb%e5%9e%8b)
@@ -298,6 +301,7 @@ http://voderl.cn/try3
 - 每一个节点 在生成时，可以不设置，在被加入时，都触发 parent 的 sizeChange 在被删除时都触发 parent 的 sizeChange 在被改变
 - 在 child 被加入或被移除时，触发检测自身 size 改变的函数，在自身改变后，向上触发检测自身改变，检测自身改变触发自身改变再向上触发检测自身改变
 - 流程控制, 被我干掉了，(异步好恶心，数不清的 bug)。为了性能，顶多在 nodeOps 里面增加删除节点时使用流程控制了。毕竟第一次渲染也要好几十 ms
+- display => flex 全部使用 flex 布局， container 没 anchor ，anchor 赋值时判断 anchor 是否存在
 
 ## Project setup
 
