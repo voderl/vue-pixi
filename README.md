@@ -1,3 +1,4 @@
+# DEPRECATED
 # vue-pixi
 
 目前 vue 文件的生成在 fork 的 vue 库中更新，此项目暂时搁置，等到更多细节确定后作为 template
